@@ -23,7 +23,7 @@ class UserModel extends Model
     /**
     * @var string роль пользователя
     */
-    protected $role = null;
+    public $role = null;
     
     public $email = null;
     
@@ -67,20 +67,34 @@ class UserModel extends Model
     
     public function update()
     {
-        $sql = "UPDATE $this->tableName SET timestamp=:timestamp, login=:login, pass=:pass, email=:email  WHERE id = :id";  
+        // Проверяем, передан ли новый пароль
+        if (empty($this->pass)) {
+            // Если пароль не передан, получаем текущий пароль и salt из БД
+            $sql = "SELECT pass, salt FROM $this->tableName WHERE id = :id";
+            $st = $this->pdo->prepare($sql);
+            $st->bindValue(":id", $this->id, \PDO::PARAM_INT);
+            $st->execute();
+            $currentData = $st->fetch();
+            
+            if ($currentData) {
+                $this->pass = $currentData['pass'];
+                $this->salt = $currentData['salt'];
+            }
+        } else {
+            // Если пароль передан, генерируем новый salt и хешируем пароль
+            $this->salt = rand(0,1000000);
+            $this->pass .= $this->salt;
+            $this->pass = password_hash($this->pass, PASSWORD_BCRYPT);
+        }
+        
+        $sql = "UPDATE $this->tableName SET timestamp=:timestamp, login=:login, salt=:salt, pass=:pass, role=:role, email=:email  WHERE id = :id";  
         $st = $this->pdo->prepare ( $sql );
         
         $st->bindValue( ":timestamp", (new \DateTime('NOW'))->format('Y-m-d H:i:s'), \PDO::PARAM_STMT);
         $st->bindValue( ":login", $this->login, \PDO::PARAM_STR );
-        
-        // Хеширование пароля
-        $this->salt = rand(0,1000000);
-        //$st->bindValue( ":salt", $this->salt, \PDO::PARAM_STR );
-        //$this->pass .= $this->salt;
-        //$hashPass = password_hash($this->pass, PASSWORD_BCRYPT);
+        $st->bindValue( ":salt", $this->salt, \PDO::PARAM_STR );
         $st->bindValue( ":pass", $this->pass, \PDO::PARAM_STR );
-        
-        //$st->bindValue( ":role", $this->role, \PDO::PARAM_STR );
+        $st->bindValue( ":role", $this->role, \PDO::PARAM_STR );
         $st->bindValue( ":email", $this->email, \PDO::PARAM_STR );
         $st->bindValue( ":id", $this->id, \PDO::PARAM_INT );
         $st->execute();

@@ -16,3 +16,4 @@ $User = Config::getObject('core.user.class');
 
 <p>Зарегистрирован <?= $viewAdminusers->timestamp ?></p>
 <p>E-mail: <?= $viewAdminusers->email ?></p>
+<p>Роль: <?= $viewAdminusers->role === 'admin' ? 'Администратор' : ($viewAdminusers->role === 'auth_user' ? 'Зарегистрированный пользователь' : $viewAdminusers->role) ?></p>
